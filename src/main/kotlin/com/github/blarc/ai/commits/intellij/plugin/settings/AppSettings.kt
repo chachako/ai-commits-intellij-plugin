@@ -4,6 +4,7 @@ import com.aallam.openai.api.http.Timeout
 import com.aallam.openai.client.OpenAIConfig
 import com.aallam.openai.client.OpenAIHost
 import com.aallam.openai.client.ProxyConfig
+import com.github.blarc.ai.commits.intellij.plugin.AICommitsBundle.message
 import com.github.blarc.ai.commits.intellij.plugin.AICommitsUtils
 import com.github.blarc.ai.commits.intellij.plugin.notifications.Notification
 import com.github.blarc.ai.commits.intellij.plugin.notifications.sendNotification
@@ -15,10 +16,10 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
+import com.intellij.openapi.observable.properties.AtomicBooleanProperty
 import com.intellij.util.xmlb.Converter
 import com.intellij.util.xmlb.XmlSerializerUtil
 import com.intellij.util.xmlb.annotations.OptionTag
-import org.jetbrains.kotlin.idea.gradleTooling.get
 import java.util.*
 import kotlin.time.Duration.Companion.seconds
 
@@ -45,7 +46,10 @@ class AppSettings : PersistentStateComponent<AppSettings> {
     var currentPrompt = prompts["basic"]!!
 
     var openAIModelId = "gpt-3.5-turbo"
-    var openAIModelIds = listOf("gpt-3.5-turbo", "gpt-4")
+    var openAICustomModelSelector = message("settings.customModel")
+    var openAICustomModelId = ""
+    var openAIModelIds = listOf("gpt-3.5-turbo", "gpt-4", openAICustomModelSelector)
+    var openAIUsingCustomModel = AtomicBooleanProperty(openAIModelId == openAICustomModelSelector)
     var openAITemperature = "0.7"
 
     var appExclusions: Set<String> = setOf()
@@ -54,6 +58,14 @@ class AppSettings : PersistentStateComponent<AppSettings> {
         const val SERVICE_NAME = "com.github.blarc.ai.commits.intellij.plugin.settings.AppSettings"
         val instance: AppSettings
             get() = ApplicationManager.getApplication().getService(AppSettings::class.java)
+    }
+
+    fun resolveOpenAIModelId(): String {
+        return if (openAIUsingCustomModel.get()) {
+            openAICustomModelId
+        } else {
+            openAIModelId
+        }
     }
 
     fun saveOpenAIToken(token: String) {

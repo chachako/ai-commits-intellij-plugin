@@ -25,7 +25,7 @@ class OpenAIService {
         val openAI = OpenAI(AppSettings.instance.getOpenAIConfig())
 
         val chatCompletionRequest = ChatCompletionRequest(
-            ModelId(AppSettings.instance.openAIModelId),
+            ModelId(AppSettings.instance.resolveOpenAIModelId()),
             listOf(
                 ChatMessage(
                     role = ChatRole.User,
@@ -46,7 +46,9 @@ class OpenAIService {
 
     suspend fun refreshOpenAIModelIds() {
         val openAI = OpenAI(AppSettings.instance.getOpenAIConfig())
-        AppSettings.instance.openAIModelIds=openAI.models().map { it.id.id }
+        AppSettings.instance.openAIModelIds = AppSettings.instance.openAIModelIds
+          .plus(openAI.models().map { it.id.id })
+          .distinct()
     }
 
     @Throws(Exception::class)
