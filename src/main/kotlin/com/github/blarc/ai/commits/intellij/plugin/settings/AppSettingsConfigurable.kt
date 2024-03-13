@@ -7,6 +7,7 @@ import com.github.blarc.ai.commits.intellij.plugin.settings.prompt.Prompt
 import com.github.blarc.ai.commits.intellij.plugin.settings.prompt.PromptTable
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.options.BoundConfigurable
+import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.progress.runBackgroundableTask
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.naturalSorted
@@ -37,6 +38,7 @@ class AppSettingsConfigurable : BoundConfigurable(message("settings.general.grou
         hostComboBox.isEditable = true
         hostComboBox.model = DefaultComboBoxModel(Vector(AppSettings.instance.openAIHosts.naturalSorted()))
         modelComboBox.model = DefaultComboBoxModel(Vector(AppSettings.instance.openAIModelIds.naturalSorted()))
+        modelComboBox.selectedItem = AppSettings.instance.openAIModelId
         modelComboBox.renderer = AppSettingsListCellRenderer()
     }
 
@@ -102,6 +104,9 @@ class AppSettingsConfigurable : BoundConfigurable(message("settings.general.grou
                                 AppSettings.instance.openAIModelId = it
                             }
                         })
+                        .onChanged {
+                            AppSettings.instance.openAIUsingCustomModel.set(it.item == AppSettings.instance.openAICustomModelSelector)
+                        }
                         .resizableColumn()
                         .align(Align.FILL)
                 button(message("settings.refreshModels")) {
@@ -116,6 +121,19 @@ class AppSettingsConfigurable : BoundConfigurable(message("settings.general.grou
                         .align(AlignX.RIGHT)
                         .widthGroup("button")
             }
+
+            row {
+                label(message("settings.openAICustomModel")).widthGroup("label")
+                @Suppress("UnstableApiUsage")
+                textField()
+                        .bindText(AppSettings.instance::openAICustomModelId)
+                        .whenTextChangedFromUi {
+                            AppSettings.instance.openAICustomModelId = it
+                        }
+                        .applyToComponent { minimumWidth = 400 }
+                        .resizableColumn()
+                        .widthGroup("input")
+            }.visibleIf(AppSettings.instance.openAIUsingCustomModel)
 
             row {
                 label(message("settings.openAITemperature"))
@@ -208,6 +226,9 @@ class AppSettingsConfigurable : BoundConfigurable(message("settings.general.grou
     }
 
     override fun apply() {
+        if (AppSettings.instance.openAIUsingCustomModel.get() && AppSettings.instance.openAICustomModelId.isBlank()) {
+            throw ConfigurationException("Custom Model ID cannot be empty")
+        }
         AppSettings.instance.openAIHosts.add(hostComboBox.item)
         promptTable.apply()
         super.apply()
